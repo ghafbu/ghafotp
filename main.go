@@ -13,8 +13,8 @@ func main() {
 	app.Use(
 		recover.New(),
 	)
-	var KeyDB = make(map[string]string, 0)
-	totp.Router(app, KeyDB)
+
+	totp.Router(app)
 	tsotp.Router(app)
 	//log.Fatal(app.ListenTLS(":443", certFile, keyFile))
 	app.Listen(":3000")

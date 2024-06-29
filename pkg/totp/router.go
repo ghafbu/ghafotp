@@ -14,12 +14,25 @@ type RequestStruct struct {
 	Mobile string `json:"mobile"`
 }
 
+var KeyDB = make(map[string]string)
+
+var mynum = map[int]string{
+	1: "09112253390",
+	2: "09112253391",
+	3: "09112253390",
+	4: "09112253393",
+	5: "09112253391",
+	6: "09112253390",
+}
+
 func Router(paramApp *fiber.App) {
 	var app = paramApp.Group("/totp")
-	
+
+	//var i = 1
+
 	//get
 	app.Get("/get/:mobile", func(c fiber.Ctx) error {
-		var mobile string = c.Params("mobile")
+		mobile := c.Params("mobile")
 		fmt.Println("mobile param:", mobile)
 		fmt.Println("reflect type:", reflect.TypeOf(mobile))
 
@@ -32,10 +45,17 @@ func Router(paramApp *fiber.App) {
 		fmt.Println("secretKey create:", secretKey.Secret())
 		//save key
 		//KeyDB["0911"] = secretKey.Secret()
-		KeyDB[mobile] = secretKey.Secret()
+		//KeyDB[mynum[i]] = secretKey.Secret()
+		KeyDB[string(mobile)] = secretKey.Secret()
 		//KeyDB.Store(mobile, secretKey.Secret())
 
-		fmt.Println("KeyDB:", KeyDB)
+		// check KeyDB
+		for k, v := range KeyDB {
+			fmt.Printf("loop => KeyDB[%s] = %s\n", k, v)
+		}
+
+		//i++
+		fmt.Printf("KeyDB:%v", KeyDB)
 
 		//generation code
 		now := time.Now().UTC()
@@ -56,6 +76,7 @@ func Router(paramApp *fiber.App) {
 
 		//return
 		return c.JSON(map[string]any{
+			"keydb":        KeyDB,
 			"code":         code,
 			"secretKey":    secretKey.Secret(),
 			"secretKeyURL": secretKey.URL(),
