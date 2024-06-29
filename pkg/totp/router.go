@@ -5,7 +5,7 @@ import (
 	"github.com/ghafbu/ghafotp/utl"
 	"github.com/gofiber/fiber/v3"
 	"github.com/pquerna/otp/totp"
-	"sync"
+	"reflect"
 	"time"
 )
 
@@ -16,12 +16,12 @@ type RequestStruct struct {
 
 func Router(paramApp *fiber.App) {
 	var app = paramApp.Group("/totp")
-	var KeyDB sync.Map
-
+	
 	//get
 	app.Get("/get/:mobile", func(c fiber.Ctx) error {
 		var mobile string = c.Params("mobile")
-		fmt.Println("mobile", mobile)
+		fmt.Println("mobile param:", mobile)
+		fmt.Println("reflect type:", reflect.TypeOf(mobile))
 
 		//generation key
 		secretKey, err := utl.GenerationSecretKey(mobile, "totp")
@@ -31,7 +31,9 @@ func Router(paramApp *fiber.App) {
 
 		fmt.Println("secretKey create:", secretKey.Secret())
 		//save key
-		KeyDB.Store(mobile, secretKey.Secret())
+		//KeyDB["0911"] = secretKey.Secret()
+		KeyDB[mobile] = secretKey.Secret()
+		//KeyDB.Store(mobile, secretKey.Secret())
 
 		fmt.Println("KeyDB:", KeyDB)
 
@@ -78,10 +80,14 @@ func Router(paramApp *fiber.App) {
 		}
 
 		//fetch key
-		valueMobile, _ := KeyDB.Load(req.Mobile)
-		secretKey := fmt.Sprintf("%s", valueMobile)
+		//valueMobile, _ := KeyDB.Load(req.Mobile)
+		//secretKey := KeyDB["0911"]
+		fmt.Println("reflect type verify:", reflect.TypeOf(req.Mobile))
+
+		secretKey, ok := KeyDB[req.Mobile]
+		//secretKey := fmt.Sprintf("%s", valueMobile)
 		fmt.Println("secretKey get:", secretKey)
-		if secretKey == "" {
+		if !ok {
 			fmt.Println("No secret key found for mobile:", req.Mobile)
 			fmt.Println("keydb::", KeyDB)
 			return c.JSON(map[string]any{
