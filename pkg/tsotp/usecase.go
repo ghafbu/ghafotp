@@ -3,66 +3,54 @@ package tsotp
 import (
 	"crypto/aes"
 	"fmt"
-	"time"
+	"github.com/pquerna/otp/totp"
 )
 
-// GenerateOTP تابع برای تولید یک OTP بر اساس الگوریتم TSOTP
-func GenerateOTP(secretKey string) (string, error) {
-	// زمان فعلی به عنوان timestamp
-	timestamp := time.Now().Unix()
+// محاسبه OTP بر اساس تایم‌استمپ و شماره توالی
+func GenerateOTP(timestamp int64, sequence int, secretKey string) (string, error, string, string) {
+	// محاسبه Nonce بر اساس تایم‌استمپ و شماره توالی
+	nonce := fmt.Sprintf("%d%d", sequence, timestamp)
 
-	// شماره دنباله به طور تصادفی (در اینجا فقط برای نمایش)
-	sequenceNumber := 1234
+	//fmt.Println("nonce:", nonce)
 
+	// رمزنگاری Nonce با استفاده از AES (شبیه‌سازی)
+	encryptedNonce, err := encryptAES(nonce, secretKey)
+	if err != nil {
+		return "", err, "", ""
+	}
+	// تراز کردن پویا (Dynamic Truncation) برای تولید OTP به طول 8 رقم
+	//fmt.Println("nonce => AES:", fmt.Sprintf("%d", encryptedNonce))
+	var aes = fmt.Sprintf("%d", encryptedNonce)
+
+	otp := dynamicTruncate(encryptedNonce)
+	return otp, nil, aes, nonce
+}
+
+// شبیه‌سازی رمزنگاری AES (باید با رمزنگاری واقعی جایگزین شود)
+func encryptAES(paramNonce string, secretKey string) ([]byte, error) {
 	// تبدیل secretKey به بایت‌ها
 	key := []byte(secretKey)
 
 	// انتخاب nonce بر اساس timestamp و sequence number
 	nonce := make([]byte, 16)
-	copy(nonce[:8], int64ToBytes(timestamp))
-	copy(nonce[8:], intToBytes(sequenceNumber))
+	copy(nonce[:16], []byte(paramNonce))
 
 	// رمزنگاری nonce با استفاده از AES
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	encryptedNonce := make([]byte, 16)
 	block.Encrypt(encryptedNonce, nonce)
 
-	// تراشیدن پویا (Dynamic Truncation) روی encryptedNonce
-	otp := DynamicTruncation(encryptedNonce)
-
-	return otp, nil
+	return encryptedNonce, nil
+	//return input, nil
 }
 
-// ValidateOTP بررسی اعتبار OTP بر اساس shared secret و کد OTP ارائه شده
-func ValidateOTP(secretKey string, otp string, expectedOtp string) (bool, error) {
-	// تبدیل secretKey به بایت‌ها
-	key := []byte(secretKey)
-
-	// تبدیل expectedOtp به بایت‌ها
-	expectedOtpBytes := []byte(expectedOtp)
-
-	// رمزگشایی expectedOtp با استفاده از AES
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return false, err
-	}
-	decrypted := make([]byte, 16)
-	block.Decrypt(decrypted, expectedOtpBytes)
-
-	// تراشیدن پویا (Dynamic Truncation) روی decrypted
-	calculatedOtp := DynamicTruncation(decrypted)
-
-	// مقایسه calculatedOtp با otp ارائه شده
-	return calculatedOtp == otp, nil
-}
-
-// DynamicTruncation تابع برای تراشیدن پویا روی encryptedNonce و تولید رشته 8 کاراکتری از اعداد
-func DynamicTruncation(encryptedNonce []byte) string {
+// تراز کردن پویا برای تولید OTP
+func dynamicTruncate(input []byte) string {
 	// تراشیدن پویا روی encryptedNonce به طول 8 بایت
-	truncated := encryptedNonce[:8]
+	truncated := input[:8]
 
 	// تبدیل به رشته اعداد
 	otp := ""
@@ -72,21 +60,14 @@ func DynamicTruncation(encryptedNonce []byte) string {
 	return otp[:8] // تضمین اینکه طول OTP دقیقاً 8 کاراکتر باشد
 }
 
-// int64ToBytes تابعی برای تبدیل int64 به بایت‌ها
-func int64ToBytes(i int64) []byte {
-	b := make([]byte, 8)
-	for j := 0; j < 8; j++ {
-		b[j] = byte(i >> uint((7-j)*8))
-	}
-	return b
-}
+// تابع برای اعتبارسنجی OTP
+func ValidateOTP(userOTP string, timestamp int64, sequence int, secretKey string) (bool, error) {
+	valid := totp.Validate(userOTP, secretKey)
+	return valid, nil
 
-// intToBytes تابعی برای تبدیل int به بایت
-func intToBytes(i int) []byte {
-	b := make([]byte, 4)
-	b[0] = byte(i >> 24)
-	b[1] = byte(i >> 16)
-	b[2] = byte(i >> 8)
-	b[3] = byte(i)
-	return b
+	//expectedOTP, err, _, _ := GenerateOTP(timestamp, sequence, secretKey)
+	//if err != nil {
+	//	return false, err
+	//}
+	//return userOTP == expectedOTP, nil
 }
