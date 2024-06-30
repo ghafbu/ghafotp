@@ -1,4 +1,4 @@
-package totp
+package tsnotp
 
 import (
 	"fmt"

@@ -9,7 +9,7 @@ func GenerationSecretKey(appName string, mobile string) (*otp.Key, error) {
 	secretKey, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      appName,
 		AccountName: mobile,
-		//Period:      120,
+		//Period:      30,
 	})
 	if err != nil {
 		return secretKey, err
